@@ -78,6 +78,20 @@ banco de dados, sem nuvem obrigatória.
 - [x] **F19 — Busca global & command palette** (Ctrl+K)
 - [x] **F20 — Settings** (proxy, SSL verify, timeout, tema; overrides por request)
 
+## MCP (integração com IAs)
+
+O ruan inclui um servidor **MCP** (`ruan-mcp`) que deixa uma IA criar e editar
+coleções, pastas e requests direto nos arquivos `.yml`, reusando a mesma lógica de
+disco do app (slug + validação anti path-traversal). Transporte STDIO / JSON-RPC,
+9 tools com prefixo `ruan_`.
+
+```bash
+cd src-tauri && cargo build --release --bin ruan-mcp
+claude mcp add ruan-request -- "$(pwd)/target/release/ruan-mcp"
+```
+
+Detalhes, lista de tools e empacotamento `.mcpb`: **[docs/MCP.md](docs/MCP.md)**.
+
 ## Rodando
 
 Pré-requisitos: Node 20+, pnpm, Rust estável, e as libs de sistema do Tauri v2

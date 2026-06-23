@@ -3,6 +3,9 @@
 
 pub mod app_state;
 pub mod http;
+// Servidor MCP (integracao com IAs): logica pura de dispatch das tools `ruan_*`.
+// O transporte STDIO/JSON-RPC fica no binario `src/bin/ruan-mcp.rs`.
+pub mod mcp;
 pub mod store;
 
 use store::watcher::CollectionWatchers;

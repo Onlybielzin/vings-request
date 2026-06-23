@@ -70,7 +70,7 @@ pub fn dentro_de(base: &Path, candidato: &Path) -> Result<(), StoreError> {
     // O candidato pode ainda nao existir; canonicaliza o ancestral existente
     // mais proximo e checa o prefixo.
     let mut ancestral = candidato;
-    let alvo_canon = loop {
+    let alvo = loop {
         if let Ok(c) = ancestral.canonicalize() {
             // Reanexa o sufixo nao-existente.
             let suffix = candidato
@@ -83,11 +83,40 @@ pub fn dentro_de(base: &Path, candidato: &Path) -> Result<(), StoreError> {
             None => break candidato.to_path_buf(),
         }
     };
+    // CRITICO: colapsa `.`/`..` do sufixo ANTES do starts_with. `Path::starts_with`
+    // e lexico e NAO normaliza `..`; sem isto, `base/sub/../../fora` passaria o
+    // prefixo (comeca lexicamente com `base`) e a escrita real escaparia da
+    // colecao. O sufixo nao-existente nao tem symlink, entao normalizar
+    // lexicamente e seguro.
+    let alvo_canon = normalizar_lexico(&alvo);
     if alvo_canon.starts_with(&base_canon) {
         Ok(())
     } else {
         Err(StoreError::EscapaColecao(candidato.display().to_string()))
     }
+}
+
+/// Normaliza um caminho ABSOLUTO lexicamente: colapsa `.` e `..` sem tocar o
+/// filesystem. Usado por `dentro_de` no sufixo nao-existente (sem symlinks).
+fn normalizar_lexico(p: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut out = PathBuf::new();
+    for comp in p.components() {
+        match comp {
+            Component::ParentDir => {
+                // Sobe um nivel apenas se ha um componente Normal para descartar;
+                // nunca sobe acima da raiz/prefixo ja acumulado.
+                if matches!(out.components().next_back(), Some(Component::Normal(_))) {
+                    out.pop();
+                } else {
+                    out.push("..");
+                }
+            }
+            Component::CurDir => {}
+            outro => out.push(outro.as_os_str()),
+        }
+    }
+    out
 }
 
 /// Carrega uma colecao a partir do diretorio raiz, lendo a arvore recursivamente.
@@ -519,6 +548,33 @@ mod tests {
             dentro_de(&dir, &escapa),
             Err(StoreError::EscapaColecao(_))
         ));
+    }
+
+    #[test]
+    fn dentro_de_rejeita_traversal_com_segmento_inexistente() {
+        // REGRESSAO [CRITICO]: `sub/../../fora` com `sub` INEXISTENTE burlava o
+        // starts_with lexico (o sufixo `..` nao era colapsado). Deve ser rejeitado.
+        let (_td, dir) = col_temp();
+        let escapa = dir.join("sub").join("..").join("..").join("pwned.yml");
+        assert!(matches!(
+            dentro_de(&dir, &escapa),
+            Err(StoreError::EscapaColecao(_))
+        ));
+        // E o caso com segmento EXISTENTE no meio tambem.
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+        let escapa2 = dir.join("real").join("..").join("..").join("pwned2.yml");
+        assert!(matches!(
+            dentro_de(&dir, &escapa2),
+            Err(StoreError::EscapaColecao(_))
+        ));
+    }
+
+    #[test]
+    fn dentro_de_aceita_subpasta_aninhada_inexistente() {
+        // Garante que o fix nao quebrou o caso legitimo de subpastas profundas.
+        let (_td, dir) = col_temp();
+        let alvo = dir.join("a").join("b").join("c.yml");
+        assert!(dentro_de(&dir, &alvo).is_ok());
     }
 
     #[test]

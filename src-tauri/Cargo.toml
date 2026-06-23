@@ -9,6 +9,11 @@ edition = "2021"
 name = "ruan_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# Servidor MCP standalone (STDIO/JSON-RPC). Reusa ruan_lib::store + ruan_lib::mcp.
+[[bin]]
+name = "ruan-mcp"
+path = "src/bin/ruan-mcp.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
