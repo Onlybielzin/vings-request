@@ -97,6 +97,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
         loading: false,
       }));
       void persistir(get);
+      void ipc.watchCollection(path); // reflete mudancas do disco AO VIVO
     } catch (e) {
       set({ loading: false, error: String(e) });
     }
@@ -125,6 +126,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
       };
     });
     void persistir(get);
+    void ipc.unwatchCollection(path);
   },
 
   setActive: (path) => {
@@ -175,6 +177,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
         loading: false,
       }));
       void persistir(get);
+      void ipc.watchCollection(path);
     } catch (e) {
       set({ loading: false, error: String(e) });
     }
@@ -202,6 +205,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
           collections: { ...state.collections, [p]: collection },
           ordem: comPath(state.ordem, p),
         }));
+        void ipc.watchCollection(p);
       } catch {
         // ignora colecao que nao carrega
       }
@@ -215,6 +219,31 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     }
   },
 }));
+
+// ---- Watcher do filesystem: atualizacao AO VIVO ----
+// Quando o disco muda por fora (ex: o servidor MCP cria/edita um .yml, ou um
+// editor externo), recarrega a colecao afetada. Debounce porque um unico save
+// dispara varios eventos do notify. Assinatura unica no carregamento do modulo.
+const _reloadTimers = new Map<string, ReturnType<typeof setTimeout>>();
+void ipc.onCollectionChanged(({ path }) => {
+  const st = useCollectionsStore.getState();
+  // A colecao afetada: match exato com uma aberta, ou a que contem o caminho mudado.
+  const alvo = st.collections[path]
+    ? path
+    : st.ordem.find((p) => path === p || path.startsWith(p + "/"));
+  if (!alvo) return;
+  const anterior = _reloadTimers.get(alvo);
+  if (anterior) clearTimeout(anterior);
+  _reloadTimers.set(
+    alvo,
+    setTimeout(() => {
+      _reloadTimers.delete(alvo);
+      if (useCollectionsStore.getState().collections[alvo]) {
+        void useCollectionsStore.getState().reloadCollection(alvo);
+      }
+    }, 150),
+  );
+});
 
 /** Persiste a ordem atual via IPC. Best-effort: erro nao quebra a UI. */
 function persistir(get: () => CollectionsState): Promise<void> {
