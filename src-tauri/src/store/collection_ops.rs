@@ -53,6 +53,7 @@ pub fn create_collection(parent: &Path, name: &str) -> Result<Collection, StoreE
         name: name.trim().to_string(),
         version: "1".to_string(),
         vars: None,
+        auth: None,
     };
     fs_store::save_collection_meta(&alvo, &meta)?;
 

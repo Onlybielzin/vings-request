@@ -12,4 +12,5 @@
 
 pub mod commands;
 pub mod engine;
+pub mod oauth;
 pub mod types;

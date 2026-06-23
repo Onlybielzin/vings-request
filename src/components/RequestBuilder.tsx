@@ -3,9 +3,13 @@
 // depender de App.css (fora da propriedade desta feature); a fase de Integracao
 // pode mover pra classes .app-* se quiser.
 
+import { useMemo } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { HTTP_METHODS } from "../lib/http-types";
 import { useRequestStore } from "../store/requestStore";
+import { useEnvStore } from "../store/envStore";
+import { useCollectionsStore } from "../store/collectionsStore";
+import { HighlightedInput } from "./HighlightedInput";
 
 export function RequestBuilder() {
   const method = useRequestStore((s) => s.request.method);
@@ -15,12 +19,20 @@ export function RequestBuilder() {
   const atualizarRequest = useRequestStore((s) => s.atualizarRequest);
   const enviar = useRequestStore((s) => s.enviar);
 
+  // Escopos de variaveis da colecao ativa, para realcar `{{var}}` na URL.
+  // IMPORTANTE: selecionamos uma referencia ESTAVEL (porColecao) e derivamos os
+  // scopes via useMemo. Chamar `scopesDe(...)` direto no seletor retornaria um
+  // objeto novo a cada render, violando o cache do useSyncExternalStore (zustand)
+  // e causando loop infinito de render.
+  const activePath = useCollectionsStore((s) => s.activePath);
+  const porColecao = useEnvStore((s) => s.porColecao);
+  const scopes = useMemo(
+    () => useEnvStore.getState().scopesDe(activePath),
+    [porColecao, activePath],
+  );
+
   const onMethod = (e: ChangeEvent<HTMLSelectElement>) => {
     atualizarRequest({ method: e.target.value });
-  };
-
-  const onUrl = (e: ChangeEvent<HTMLInputElement>) => {
-    atualizarRequest({ url: e.target.value });
   };
 
   const onSubmit = (e: FormEvent) => {
@@ -47,16 +59,13 @@ export function RequestBuilder() {
           ))}
         </select>
 
-        <input
-          type="text"
-          aria-label="URL"
+        <HighlightedInput
+          ariaLabel="URL"
           placeholder="https://api.exemplo.com/recurso"
           value={url}
-          onChange={onUrl}
+          onChange={(v) => atualizarRequest({ url: v })}
+          scopes={scopes}
           disabled={loading}
-          spellCheck={false}
-          autoComplete="off"
-          style={estilos.input}
         />
 
         <button

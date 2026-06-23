@@ -2,7 +2,7 @@
 // Tudo aqui e POJO puro com serde — sem I/O. As structs sao gravadas/lidas como YAML.
 //
 // Convencoes de serde:
-// - camelCase no disco (combina com o espelho TS e com o estilo Bruno).
+// - camelCase no disco (combina com o espelho TS).
 // - campos opcionais omitidos quando vazios/None para manter os .yml limpos.
 
 use serde::{Deserialize, Serialize};
@@ -245,6 +245,11 @@ pub struct CollectionMeta {
     pub version: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vars: Option<serde_yaml::Value>,
+    /// Auth herdavel da colecao (F11). Retrocompativel: ausente => None, e
+    /// omitido na serializacao quando None para manter o collection.yml limpo.
+    /// Requests/pastas com `mode: inherit` sobem ate aqui.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<Auth>,
 }
 
 /// Metadados so do `folder.yml` (sem os filhos).
@@ -254,6 +259,11 @@ pub struct FolderMeta {
     pub name: String,
     #[serde(default)]
     pub seq: u32,
+    /// Auth herdavel da pasta (F11). Retrocompativel: ausente => None, omitido
+    /// na serializacao quando None. Requests com `mode: inherit` sobem ate aqui
+    /// (e desta para a colecao, se a pasta tambem nao definir auth concreta).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<Auth>,
 }
 
 #[cfg(test)]
@@ -298,8 +308,185 @@ mod tests {
             name: "Minha API".to_string(),
             version: "1".to_string(),
             vars: None,
+            auth: None,
         };
         let y = serde_yaml::to_string(&meta).unwrap();
         assert!(!y.contains("items"), "collection.yml nao deve conter items");
+    }
+
+    // ---- F9/F11 retrocompat: Meta desserializa COM e SEM campos extras ----
+    //
+    // Garante que ler um collection.yml/folder.yml de versao anterior (sem novos
+    // campos) E de versao futura (com um bloco `auth:` ou outras chaves que o
+    // Meta nao conhece) NAO quebra. serde sem `deny_unknown_fields` deve tolerar
+    // chaves desconhecidas; campos ausentes caem no default. Se algum agente
+    // adicionar `deny_unknown_fields`, estes testes pegam a regressao.
+
+    #[test]
+    fn collection_meta_desserializa_sem_auth_e_sem_vars() {
+        // YAML minimo de uma colecao antiga.
+        let y = "name: Antiga\nversion: \"1\"\n";
+        let meta: CollectionMeta = serde_yaml::from_str(y).unwrap();
+        assert_eq!(meta.name, "Antiga");
+        assert_eq!(meta.version, "1");
+        assert!(meta.vars.is_none());
+    }
+
+    #[test]
+    fn collection_meta_desserializa_com_bloco_auth_desconhecido() {
+        // collection.yml "do futuro" com um bloco auth que CollectionMeta nao
+        // mapeia: deve ser ignorado, nao causar erro de parse.
+        let y = "name: Nova\nversion: \"2\"\nauth:\n  mode: bearer\n  token: abc\n";
+        let meta: CollectionMeta =
+            serde_yaml::from_str(y).expect("auth desconhecido nao deve quebrar o parse");
+        assert_eq!(meta.name, "Nova");
+        assert_eq!(meta.version, "2");
+    }
+
+    #[test]
+    fn collection_meta_version_default_quando_ausente() {
+        // Sem version -> default "1" (retrocompat de arquivo muito antigo).
+        let meta: CollectionMeta = serde_yaml::from_str("name: SoNome\n").unwrap();
+        assert_eq!(meta.version, "1");
+    }
+
+    #[test]
+    fn folder_meta_desserializa_sem_seq_e_sem_auth() {
+        // folder.yml antigo: so o nome.
+        let meta: FolderMeta = serde_yaml::from_str("name: pasta\n").unwrap();
+        assert_eq!(meta.name, "pasta");
+        assert_eq!(meta.seq, 0); // default
+    }
+
+    #[test]
+    fn folder_meta_desserializa_com_bloco_auth_desconhecido() {
+        // folder.yml "do futuro" com auth herdavel: ignorado pelo Meta.
+        let y = "name: pasta\nseq: 3\nauth:\n  mode: inherit\n";
+        let meta: FolderMeta =
+            serde_yaml::from_str(y).expect("auth desconhecido nao deve quebrar o parse");
+        assert_eq!(meta.name, "pasta");
+        assert_eq!(meta.seq, 3);
+    }
+
+    // ---- RequestItem JA carrega auth (M2): round-trip com e sem auth ----
+
+    #[test]
+    fn request_item_sem_auth_no_yaml_usa_auth_none_default() {
+        // Request antiga sem bloco auth -> Auth::default() (mode None).
+        let y = "name: req\nmethod: GET\nurl: http://x\n";
+        let req: RequestItem = serde_yaml::from_str(y).unwrap();
+        assert_eq!(req.auth.mode, AuthMode::None);
+        assert!(req.auth.token.is_none());
+    }
+
+    #[test]
+    fn request_item_com_auth_bearer_round_trip() {
+        let req = RequestItem {
+            name: "req".to_string(),
+            seq: 0,
+            method: "GET".to_string(),
+            url: "http://x".to_string(),
+            headers: vec![],
+            params: vec![],
+            body: Body::default(),
+            auth: Auth {
+                mode: AuthMode::Bearer,
+                token: Some("tkn".to_string()),
+                ..Auth::default()
+            },
+            scripts: Scripts::default(),
+            tests: String::new(),
+            docs: String::new(),
+        };
+        let y = serde_yaml::to_string(&req).unwrap();
+        let de: RequestItem = serde_yaml::from_str(&y).unwrap();
+        assert_eq!(de.auth.mode, AuthMode::Bearer);
+        assert_eq!(de.auth.token.as_deref(), Some("tkn"));
+        assert_eq!(de, req);
+    }
+
+    #[test]
+    fn auth_mode_serializa_snake_case() {
+        // O disco precisa de snake_case nos enums (espelho TS bate).
+        let a = Auth {
+            mode: AuthMode::Apikey,
+            ..Auth::default()
+        };
+        let y = serde_yaml::to_string(&a).unwrap();
+        assert!(y.contains("apikey"), "AuthMode deve serializar snake_case");
+    }
+
+    // ---- F11: auth herdavel em CollectionMeta/FolderMeta -----------------
+
+    #[test]
+    fn collection_meta_auth_none_omitido_no_yaml() {
+        // auth None nao deve aparecer no collection.yml (skip_serializing_if).
+        let meta = CollectionMeta {
+            name: "C".to_string(),
+            version: "1".to_string(),
+            vars: None,
+            auth: None,
+        };
+        let y = serde_yaml::to_string(&meta).unwrap();
+        assert!(!y.contains("auth"), "auth None nao deve serializar");
+    }
+
+    #[test]
+    fn collection_meta_auth_concreta_round_trip() {
+        let meta = CollectionMeta {
+            name: "C".to_string(),
+            version: "1".to_string(),
+            vars: None,
+            auth: Some(Auth {
+                mode: AuthMode::Bearer,
+                token: Some("tkn".to_string()),
+                ..Auth::default()
+            }),
+        };
+        let y = serde_yaml::to_string(&meta).unwrap();
+        assert!(y.contains("auth"), "auth concreta deve serializar");
+        let de: CollectionMeta = serde_yaml::from_str(&y).unwrap();
+        assert_eq!(de.auth.as_ref().unwrap().mode, AuthMode::Bearer);
+        assert_eq!(de.auth.unwrap().token.as_deref(), Some("tkn"));
+    }
+
+    #[test]
+    fn folder_meta_auth_inherit_round_trip() {
+        let meta = FolderMeta {
+            name: "p".to_string(),
+            seq: 2,
+            auth: Some(Auth {
+                mode: AuthMode::Inherit,
+                ..Auth::default()
+            }),
+        };
+        let y = serde_yaml::to_string(&meta).unwrap();
+        let de: FolderMeta = serde_yaml::from_str(&y).unwrap();
+        assert_eq!(de.auth.unwrap().mode, AuthMode::Inherit);
+    }
+
+    #[test]
+    fn collection_meta_sem_auth_no_yaml_desserializa_none() {
+        // YAML antigo (sem auth) -> campo None por default.
+        let y = "name: Antiga\nversion: \"1\"\n";
+        let meta: CollectionMeta = serde_yaml::from_str(y).unwrap();
+        assert!(meta.auth.is_none());
+    }
+
+    #[test]
+    fn folder_meta_sem_auth_no_yaml_desserializa_none() {
+        let meta: FolderMeta = serde_yaml::from_str("name: p\nseq: 0\n").unwrap();
+        assert!(meta.auth.is_none());
+    }
+
+    #[test]
+    fn apikey_placement_default_header() {
+        // Auth apikey sem placement no YAML -> placement fica None (o default de
+        // aplicacao e header), mas o enum em si tem Header como Default.
+        assert_eq!(ApiKeyPlacement::default(), ApiKeyPlacement::Header);
+        let y = "mode: apikey\nkey: X-Key\nvalue: v\n";
+        let a: Auth = serde_yaml::from_str(y).unwrap();
+        assert_eq!(a.mode, AuthMode::Apikey);
+        assert!(a.placement.is_none());
     }
 }

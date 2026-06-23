@@ -11,6 +11,7 @@
 
 pub mod collection_ops;
 pub mod commands;
+pub mod env_ops;
 pub mod error;
 pub mod fs_store;
 pub mod models;

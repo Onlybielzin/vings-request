@@ -317,6 +317,7 @@ mod tests {
             name: "Minha Colecao".to_string(),
             version: "2".to_string(),
             vars: Some(serde_yaml::from_str("base_url: http://x").unwrap()),
+            auth: None,
         };
         let yaml = stringify_collection_meta(&meta).unwrap();
         let back = parse_collection_meta(&yaml).unwrap();
@@ -346,6 +347,7 @@ mod tests {
         let meta = FolderMeta {
             name: "auth".to_string(),
             seq: 7,
+            auth: None,
         };
         let yaml = stringify_folder_meta(&meta).unwrap();
         let back = parse_folder_meta(&yaml).unwrap();

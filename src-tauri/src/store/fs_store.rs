@@ -209,6 +209,7 @@ pub fn create_folder(
     let meta = FolderMeta {
         name: name.to_string(),
         seq,
+        auth: None,
     };
     let yaml = parser::stringify_folder_meta(&meta)?;
     fs::write(alvo.join(FOLDER_FILE), yaml)?;
@@ -264,6 +265,7 @@ mod tests {
             name: "Minha Colecao".to_string(),
             version: "1".to_string(),
             vars: None,
+            auth: None,
         };
         save_collection_meta(&dir, &meta).unwrap();
         (td, dir)

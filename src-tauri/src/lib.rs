@@ -33,6 +33,14 @@ pub fn run() {
             store::tree_ops::move_item,
             // F4 — envio HTTP
             http::commands::send_request,
+            // F9 — environments & variaveis (por colecao + globais)
+            store::env_ops::list_environments,
+            store::env_ops::save_environment_cmd,
+            store::env_ops::delete_environment_cmd,
+            app_state::globals::load_global_vars_cmd,
+            app_state::globals::save_global_vars_cmd,
+            // F11 — OAuth2 (obtencao de token; demais auth e aplicada no front)
+            http::oauth::oauth2_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

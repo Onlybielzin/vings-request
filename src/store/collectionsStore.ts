@@ -6,7 +6,13 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import type { Collection } from "../lib/types";
+import { normalizarCollection } from "../lib/types";
 import * as ipc from "../lib/ipc";
+
+/** Abre uma colecao via IPC e normaliza a arvore (defaults p/ campos omitidos). */
+async function carregarColecao(path: string): Promise<Collection> {
+  return normalizarCollection(await ipc.openCollection(path));
+}
 
 // ---- Wrappers IPC proprios da F2 ----
 // Mantidos aqui (em vez de em lib/ipc.ts) porque ipc.ts pertence a outra onda.
@@ -83,7 +89,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   openCollection: async (path) => {
     set({ loading: true, error: null });
     try {
-      const collection = await ipc.openCollection(path);
+      const collection = await carregarColecao(path);
       set((state) => ({
         collections: { ...state.collections, [path]: collection },
         ordem: comPath(state.ordem, path),
@@ -98,7 +104,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
 
   reloadCollection: async (path) => {
     try {
-      const collection = await ipc.openCollection(path);
+      const collection = await carregarColecao(path);
       set((state) => ({
         collections: { ...state.collections, [path]: collection },
       }));
@@ -158,7 +164,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     if (!parent) return; // usuario cancelou
     set({ loading: true });
     try {
-      const collection = await ipcCreateCollection(parent, nome);
+      const collection = normalizarCollection(await ipcCreateCollection(parent, nome));
       // O backend cria <parent>/<slug(nome)>/. Como nao recebemos o caminho
       // exato de volta, reabrimos pela API padrao a partir do caminho slugado.
       const path = juntarCaminho(parent, slugFront(nome));
@@ -191,7 +197,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     // colecoes que nao carregam somem da persistencia naturalmente.
     for (const p of paths) {
       try {
-        const collection = await ipc.openCollection(p);
+        const collection = await carregarColecao(p);
         set((state) => ({
           collections: { ...state.collections, [p]: collection },
           ordem: comPath(state.ordem, p),

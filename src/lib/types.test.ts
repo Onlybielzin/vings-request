@@ -4,6 +4,9 @@ import {
   isFolder,
   isRequest,
   novaRequest,
+  normalizarRequest,
+  normalizarCollection,
+  type Collection,
   type Folder,
   type RequestItem,
   type TreeItem,
@@ -86,5 +89,74 @@ describe("novaRequest", () => {
   it("resultado e uma RequestItem valida segundo isRequest", () => {
     const item: TreeItem = { type: "request", ...novaRequest("x") };
     expect(isRequest(item)).toBe(true);
+  });
+});
+
+describe("normalizarRequest (regressao: tela preta por campos omitidos no IPC)", () => {
+  it("preenche headers/params/body.form quando ausentes (serde os omite)", () => {
+    const raw = { name: "r", method: "GET", url: "/x" } as Partial<RequestItem>;
+    const r = normalizarRequest(raw);
+    expect(Array.isArray(r.headers)).toBe(true);
+    expect(Array.isArray(r.params)).toBe(true);
+    expect(Array.isArray(r.body.form)).toBe(true);
+    expect(r.headers).toEqual([]);
+    expect(r.params).toEqual([]);
+  });
+
+  it("aplica defaults de method/auth/scripts/body.mode", () => {
+    const r = normalizarRequest({ name: "r" });
+    expect(r.method).toBe("GET");
+    expect(r.auth.mode).toBe("none");
+    expect(r.body.mode).toBe("none");
+    expect(r.scripts).toEqual({ pre: "", post: "" });
+  });
+
+  it("preserva valores presentes", () => {
+    const r = normalizarRequest({
+      name: "r",
+      method: "POST",
+      headers: [{ name: "Accept", value: "application/json", enabled: true }],
+      auth: { mode: "bearer", token: "t" },
+    });
+    expect(r.method).toBe("POST");
+    expect(r.headers).toHaveLength(1);
+    expect(r.auth.mode).toBe("bearer");
+    expect(r.auth.token).toBe("t");
+  });
+
+  it("tolera null/undefined sem quebrar", () => {
+    expect(normalizarRequest(null).headers).toEqual([]);
+    expect(normalizarRequest(undefined).params).toEqual([]);
+  });
+});
+
+describe("normalizarCollection", () => {
+  it("normaliza requests da arvore recursivamente (folders e requests)", () => {
+    const col = {
+      name: "c",
+      version: "1",
+      items: [
+        { type: "request", name: "r1", method: "GET", url: "/a" },
+        {
+          type: "folder",
+          name: "f",
+          seq: 0,
+          items: [{ type: "request", name: "r2", method: "POST", url: "/b" }],
+        },
+      ],
+    } as unknown as Collection;
+    const out = normalizarCollection(col);
+    const req = out.items[0] as { type: "request" } & RequestItem;
+    expect(req.headers).toEqual([]);
+    expect(req.params).toEqual([]);
+    const folder = out.items[1] as { type: "folder" } & Folder;
+    const inner = folder.items[0] as { type: "request" } & RequestItem;
+    expect(inner.headers).toEqual([]);
+    expect(inner.body.mode).toBe("none");
+  });
+
+  it("tolera items ausente", () => {
+    const out = normalizarCollection({ name: "c", version: "1" } as Collection);
+    expect(out.items).toEqual([]);
   });
 });

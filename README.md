@@ -4,6 +4,11 @@ Cliente HTTP / API **file-based**, feito em **Tauri v2 + Rust + React**, **otimi
 Cada coleção é uma pasta no disco e cada request é um arquivo `.yml` — versionável no git, sem
 banco de dados, sem nuvem obrigatória.
 
+![ruan](docs/screenshot.png)
+
+> Coleção em árvore (pastas + requests com badge de método), builder com realce de variáveis
+> `{{var}}`, abas Params/Headers/Body/Auth, seletor de ambiente e viewer de resposta.
+
 > Status: **MVP funcional (Milestone 1)**. Já abre coleções, monta e dispara requests e mostra
 > a resposta. Variáveis/ambientes, auth, scripting e import/export estão no roadmap abaixo.
 
