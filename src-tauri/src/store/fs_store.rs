@@ -2,7 +2,7 @@
 // Nomes de arquivo SEMPRE passam por `slug_seguro` antes de tocar o disco,
 // garantindo que nada escape do diretorio da colecao.
 //
-// Layout em disco (igual Bruno, mas YAML):
+// Layout em disco (file-based, YAML):
 //   minha-colecao/
 //     collection.yml          <- CollectionMeta
 //     listar-usuarios.yml     <- RequestItem

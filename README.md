@@ -1,8 +1,8 @@
 # ruan
 
-Cliente HTTP / API **file-based** (estilo Bruno/Postman), feito em **Tauri v2 + Rust + React**,
-**otimizado pro Linux**. Cada coleção é uma pasta no disco e cada request é um arquivo `.yml` —
-versionável no git, sem banco de dados, sem nuvem obrigatória.
+Cliente HTTP / API **file-based**, feito em **Tauri v2 + Rust + React**, **otimizado pro Linux**.
+Cada coleção é uma pasta no disco e cada request é um arquivo `.yml` — versionável no git, sem
+banco de dados, sem nuvem obrigatória.
 
 > Status: **MVP funcional (Milestone 1)**. Já abre coleções, monta e dispara requests e mostra
 > a resposta. Variáveis/ambientes, auth, scripting e import/export estão no roadmap abaixo.
