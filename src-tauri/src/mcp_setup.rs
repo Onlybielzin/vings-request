@@ -12,7 +12,7 @@
 // - Antes de registrar/escrever qualquer coisa, VALIDAMOS que `binary_path`
 //   existe no disco (evita gravar lixo na config).
 // - O merge na config do Claude Desktop PRESERVA tudo que ja existe: apenas
-//   define/atualiza `mcpServers.ruan-request`, sem remover outras chaves. Antes
+//   define/atualiza `mcpServers.vings-request`, sem remover outras chaves. Antes
 //   de sobrescrever o arquivo, fazemos BACKUP (.bak).
 // - A logica pura do merge vive em `merge_desktop_config` (recebe/devolve String),
 //   testavel sem tocar disco. Os comandos so fazem o I/O em volta dela.
@@ -23,8 +23,8 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 
 /// Nome da chave do servidor dentro de `mcpServers`. Casa com o comando
-/// documentado: `claude mcp add ruan-request -- <path>`.
-const SERVER_KEY: &str = "ruan-request";
+/// documentado: `claude mcp add vings-request -- <path>`.
+const SERVER_KEY: &str = "vings-request";
 
 /// Nome do binario MCP gerado por este crate.
 const BIN_NAME: &str = "ruan-mcp";
@@ -36,7 +36,7 @@ pub struct McpStatus {
     pub claude_code_cli_present: bool,
     /// Caminho do config do Claude Desktop (exista ou nao o arquivo).
     pub claude_desktop_config_path: Option<String>,
-    /// O config do Claude Desktop ja contem `mcpServers["ruan-request"]`.
+    /// O config do Claude Desktop ja contem `mcpServers["vings-request"]`.
     pub claude_desktop_configured: bool,
 }
 
@@ -189,7 +189,7 @@ fn resolver_binario_canonico(dica: &str) -> Result<String, String> {
 
 /// Comando Tauri: registra o servidor no Claude Code via CLI `claude`.
 ///
-/// Roda `claude mcp add ruan-request -- <binary_path>` SEM shell: os argumentos
+/// Roda `claude mcp add vings-request -- <binary_path>` SEM shell: os argumentos
 /// vao num vetor para `std::process::Command`, entao `binary_path` nunca e
 /// interpretado como shell (sem risco de injecao).
 #[tauri::command]
@@ -232,7 +232,7 @@ pub fn mcp_register_claude_code(binary_path: String) -> Result<String, String> {
 /// LOGICA PURA do merge da config do Claude Desktop.
 ///
 /// Recebe o JSON atual como string (`existing`; pode ser vazio => comeca de `{}`)
-/// e devolve o novo JSON (pretty) com `mcpServers.ruan-request = { "command":
+/// e devolve o novo JSON (pretty) com `mcpServers.vings-request = { "command":
 /// binary_path }` definido, PRESERVANDO todas as outras chaves/entradas.
 ///
 /// Erros: JSON existente invalido, ou raiz/`mcpServers` que nao sao objetos.
@@ -352,7 +352,7 @@ mod tests {
 
     #[test]
     fn merge_atualiza_entrada_existente_sem_duplicar() {
-        let existing = r#"{ "mcpServers": { "ruan-request": { "command": "/velho" } } }"#;
+        let existing = r#"{ "mcpServers": { "vings-request": { "command": "/velho" } } }"#;
         let out = merge_desktop_config(existing, "/novo/ruan-mcp").unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["mcpServers"][SERVER_KEY]["command"], "/novo/ruan-mcp");
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn merge_vazio_cria_command_aninhado() {
-        // JSON vazio/"" cria mcpServers.ruan-request.command com o caminho.
+        // JSON vazio/"" cria mcpServers.vings-request.command com o caminho.
         for entrada in ["", "  ", "{}"] {
             let out = merge_desktop_config(entrada, "/bin/ruan-mcp").unwrap();
             let v: Value = serde_json::from_str(&out).unwrap();
@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn merge_preserva_outros_servers_e_adiciona_o_nosso() {
-        // Config com OUTROS mcpServers preserva-os e adiciona ruan-request.
+        // Config com OUTROS mcpServers preserva-os e adiciona vings-request.
         let existing = r#"{
             "mcpServers": {
                 "filesystem": { "command": "/usr/bin/fs-mcp", "args": ["/data"] },

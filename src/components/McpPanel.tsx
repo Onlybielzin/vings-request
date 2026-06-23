@@ -98,7 +98,7 @@ export function McpPanel() {
   }, []);
 
   const comandoClaude = binaryPath
-    ? `claude mcp add ruan-request -- ${binaryPath}`
+    ? `claude mcp add vings-request -- ${binaryPath}`
     : "";
 
   function limpar() {

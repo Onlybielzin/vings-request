@@ -22,7 +22,7 @@ e configura o Claude Code / Claude Desktop num clique:
 - Binário standalone `ruan-mcp`, transporte **STDIO** com **JSON-RPC 2.0**
   (uma mensagem por linha).
 - `stdout` é exclusivo do protocolo; todo log/diagnóstico vai para `stderr`.
-- `protocolVersion`: `2024-11-05`. `serverInfo.name`: `ruan-request`.
+- `protocolVersion`: `2024-11-05`. `serverInfo.name`: `vings-request`.
 - A lógica das tools vive em `ruan_lib::mcp` (testável via `cargo test`); o binário
   (`src-tauri/src/bin/ruan-mcp.rs`) só cuida do transporte.
 
@@ -67,7 +67,7 @@ Para desenvolvimento, `cargo build --bin ruan-mcp` gera em `target/debug/ruan-mc
 Aponte para o binário compilado (sem argumentos):
 
 ```bash
-claude mcp add ruan-request -- /caminho/absoluto/para/src-tauri/target/release/ruan-mcp
+claude mcp add vings-request -- /caminho/absoluto/para/src-tauri/target/release/ruan-mcp
 ```
 
 Depois, dentro de uma sessão, peça à IA coisas como "abra a coleção em
@@ -81,7 +81,7 @@ No `.mcp.json` do projeto ou no `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "ruan-request": {
+    "vings-request": {
       "command": "/caminho/absoluto/para/src-tauri/target/release/ruan-mcp"
     }
   }

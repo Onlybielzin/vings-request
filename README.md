@@ -1,8 +1,8 @@
-# ruan
+# Vings Request
 
 Cliente HTTP / API **file-based**, feito em **Tauri v2 + Rust + React**, **otimizado pro Linux**.
 
-![ruan](docs/screenshot.png)
+![Vings Request](docs/screenshot.png)
 
 ## Features
 

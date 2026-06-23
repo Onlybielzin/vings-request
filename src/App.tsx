@@ -247,7 +247,7 @@ function App() {
   return (
     <main className="app-shell" data-theme={theme} style={{ fontSize }}>
       <header className="app-header">
-        <span className="app-title">ruan</span>
+        <span className="app-title">Vings Request</span>
         <div className="app-header-tools">
           <EnvSelector />
           <button

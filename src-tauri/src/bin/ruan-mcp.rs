@@ -26,7 +26,7 @@ use ruan_lib::mcp::{executar_tool, lista_tools, Estado};
 use serde_json::{json, Value};
 
 const PROTOCOL_VERSION: &str = "2024-11-05";
-const SERVER_NAME: &str = "ruan-request";
+const SERVER_NAME: &str = "vings-request";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Teto por linha JSON-RPC lida do stdin (16 MiB). O cliente MCP local e
