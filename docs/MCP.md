@@ -10,6 +10,13 @@ lógica de disco do app (módulo `store`): sanitização de nomes (slug), valida
 anti path-traversal e limite de tamanho de leitura valem igual. A IA não consegue
 escrever fora do diretório da coleção declarada.
 
+## Configuração pelo app (1 clique)
+
+O ruan tem um painel **IA / MCP** no header que detecta o binário, mostra o status
+e configura o Claude Code / Claude Desktop num clique:
+
+![Painel IA / MCP](mcp-panel.png)
+
 ## Como funciona
 
 - Binário standalone `ruan-mcp`, transporte **STDIO** com **JSON-RPC 2.0**

@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "ruan — cliente HTTP file-based, otimizado pro Linux"
 authors = ["vings"]
 edition = "2021"
+# Com 2 binarios (ruan + ruan-mcp), `cargo run`/`tauri dev` precisam saber o
+# default; sem isto o tauri dev falha com "could not determine which binary".
+default-run = "ruan"
 
 [lib]
 name = "ruan_lib"
